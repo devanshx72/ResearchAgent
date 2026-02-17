@@ -1,0 +1,213 @@
+# Agentic Research & Article Generation System
+
+A multi-agent pipeline built with **LangGraph** and powered by **Google Gemini** that transforms a single user query into a fully researched, human-reviewed, publication-ready article.
+
+## Features
+
+- **Autonomous Research**: Breaks topics into sub-questions, searches the web, grades results
+- **Self-Correction**: Automatically rewrites poor queries and improves article quality
+- **Multi-Agent Pipeline**: 9 specialized agents working in orchestrated sequence
+- **Human-in-the-Loop**: Pause for human review before publishing
+- **Quality Assurance**: Scores articles on coverage, accuracy, structure, and tone
+- **Multiple Export Formats**: Markdown, DOCX, and Notion (upcoming)
+
+## 🏗️ Architecture
+
+```
+User Query → Query Analyzer → Web Search → Result Grader
+                                              ↓
+                                    Query Rewriter (if needed)
+                                              ↓
+              Research Synthesizer → Article Writer
+                                              ↓
+                    Quality Checker → HITL Checkpoint
+                                              ↓
+                      Publisher → Final Article (.md/.docx)
+```
+
+## Prerequisites
+
+- Python 3.11+
+- Google Gemini API key
+- Tavily Search API key
+
+## Quick Start
+
+### 1. Clone and Setup
+
+```bash
+cd /Users/devansh/Coding/Agents
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 2. Configure API Keys
+
+Create a `.env` file from the template:
+
+```bash
+cp .env.template .env
+```
+
+Edit `.env` and add your API keys:
+
+```
+GEMINI_API_KEY=your_gemini_api_key_here
+TAVILY_API_KEY=your_tavily_api_key_here
+```
+
+### 3. Run the Agent
+
+```bash
+python main.py --query "Impact of AI on healthcare in 2025" --export-format markdown
+```
+
+Additional options:
+
+```bash
+python main.py \
+  --query "Your research topic" \
+  --export-format markdown \
+  --tone professional \
+  --word-count 1500
+```
+
+### 4. Handle HITL Checkpoint
+
+When the system pauses for human review, you'll see the article draft in your terminal. To resume:
+
+**Option 1: Approve**
+```bash
+python resume_hitl.py --thread-id default --decision approve
+```
+
+**Option 2: Request Edits**
+```bash
+python resume_hitl.py \
+  --thread-id default \
+  --decision edit \
+  --feedback "Add more statistics about AI adoption rates"
+```
+
+**Option 3: Reject and Restart**
+```bash
+python resume_hitl.py \
+  --thread-id default \
+  --decision reject \
+  --feedback "Focus more on challenges than benefits"
+```
+
+## Project Structure
+
+```
+.
+├── main.py                     # Entry point
+├── resume_hitl.py              # HITL resume script
+├── requirements.txt            # Dependencies
+├── .env                        # API keys (create from .env.template)
+├── graph/
+│   ├── state.py                # ResearchState definition
+│   ├── graph_builder.py        # LangGraph orchestration
+│   └── nodes/                  # Agent implementations
+│       ├── query_analyzer.py
+│       ├── web_search.py
+│       ├── result_grader.py
+│       ├── query_rewriter.py
+│       ├── synthesizer.py
+│       ├── writer.py
+│       ├── quality_checker.py
+│       ├── hitl.py
+│       └── publisher.py
+├── tools/
+│   └── tavily_search.py        # Tavily API wrapper
+├── prompts/
+│   └── templates.py            # LLM prompt templates
+└── outputs/                    # Generated articles
+```
+
+## Configuration Options
+
+| Argument | Default | Options | Description |
+|----------|---------|---------|-------------|
+| `--query` | Required | Any string | Research topic or question |
+| `--export-format` | markdown | markdown, docx, notion | Output format |
+| `--tone` | professional | professional, casual, technical | Article tone |
+| `--word-count` | 1000 | 500-2000 | Target word count |
+| `--thread-id` | default | Any string | Session ID for state persistence |
+
+## Agent Descriptions
+
+| Agent | Role | Model |
+|-------|------|-------|
+| **Query Analyzer** | Breaks query into 3-5 sub-questions | Gemini 1.5 Flash |
+| **Web Search** | Searches Tavily API for each sub-question | N/A (API) |
+| **Result Grader** | Scores results 1-5 on relevance | Gemini 1.5 Flash |
+| **Query Rewriter** | Reformulates poor queries (max 3 iterations) | Gemini 1.5 Flash |
+| **Synthesizer** | Aggregates results into structured notes | Gemini 1.5 Pro |
+| **Article Writer** | Generates full article from notes | Gemini 1.5 Pro |
+| **Quality Checker** | Scores article 0-100 on 4 dimensions | Gemini 1.5 Flash |
+| **HITL Checkpoint** | Pauses for human review | N/A (interrupt) |
+| **Publisher** | Exports to .md/.docx/Notion | N/A (I/O) |
+
+## Quality Metrics
+
+Articles are scored on:
+- **Coverage** (0-25): Comprehensiveness of research notes
+- **Factual Consistency** (0-25): Accuracy and proper citations
+- **Structure** (0-25): Organization and flow
+- **Tone** (0-25): Appropriateness and consistency
+
+**Passing threshold**: 70/100
+
+## Development
+
+### Running Tests
+
+```bash
+pytest tests/ -v
+```
+
+### Graph Visualization
+
+Use [LangGraph Studio](https://github.com/langchain-ai/langgraph-studio) to visualize the agent graph:
+
+```bash
+# Install LangGraph Studio, then open the project directory
+```
+
+### Logging
+
+Full state is logged at each node transition for debugging.
+
+## Example Queries
+
+- "Impact of artificial intelligence on healthcare in 2025"
+- "Climate change effects on coastal cities"
+- "Future of quantum computing and its applications"
+- "Pros and cons of remote work in tech companies"
+- "Latest developments in renewable energy technologies"
+
+## Contributing
+
+This is a demonstration project for agentic AI concepts. Feel free to extend it with:
+- Additional export formats (PDF, HTML)
+- More sophisticated quality checks
+- Fact-checking agents
+- Multi-language support
+- Web UI for HITL
+
+## License
+
+MIT License - See LICENSE file for details
+
+## Acknowledgments
+
+Built with:
+- [LangGraph](https://github.com/langchain-ai/langgraph) - Agent orchestration framework
+- [Google Gemini](https://ai.google.dev/) - LLM provider
+- [Tavily](https://tavily.com/) - Agent-optimized search API
+
+---
+
+**Note**: This system is designed for demonstration purposes. For production use, add appropriate error handling, rate limiting, and monitoring.
