@@ -5,6 +5,7 @@ Resume script for HITL checkpoint - allows human to provide feedback and continu
 import os
 import argparse
 from dotenv import load_dotenv
+from langgraph.types import Command
 from graph.graph_builder import build_graph
 
 
@@ -40,14 +41,14 @@ def main():
     
     args = parser.parse_args()
     
-    # Build graph (will restore state from checkpoint)
+    # Build graph (restores state from the persistent SQLite checkpoint)
     print("Resuming from HITL checkpoint...")
     app = build_graph()
     
-    # Configuration
+    # Configuration — must match the thread-id used in main.py
     config = {"configurable": {"thread_id": args.thread_id}}
     
-    # Human input to resume
+    # Human input passed back to the interrupt() call in the HITL node
     human_input = {
         "decision": args.decision,
         "feedback": args.feedback
@@ -59,9 +60,11 @@ def main():
         print(f"Feedback: {args.feedback}")
     print(f"{'='*80}\n")
     
-    # Resume execution with human input
+    # Use Command(resume=...) — the correct LangGraph API for resuming
+    # from an interrupt().  Passing the dict directly as initial state
+    # would restart the graph from scratch instead of resuming.
     try:
-        for event in app.stream(human_input, config, stream_mode="updates"):
+        for event in app.stream(Command(resume=human_input), config, stream_mode="updates"):
             for node_name, node_output in event.items():
                 print(f"\n{'─'*80}")
                 print(f"✓ Completed: {node_name}")
@@ -76,7 +79,7 @@ def main():
         if "interrupt" in str(e).lower() or hasattr(e, '__interrupt__'):
             print("\nAnother HITL Checkpoint Reached")
             print("="*80)
-            print("Run this script again to provide additional feedback.")
+            print(f"Run this script again with --thread-id {args.thread_id} to continue.")
             print("="*80)
         else:
             print(f"\nError during execution: {e}")

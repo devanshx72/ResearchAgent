@@ -27,6 +27,9 @@ outputs/*.docx
 .DS_Store
 Thumbs.db
 
+# Checkpoints
+checkpoints/
+
 # Testing
 .pytest_cache/
 htmlcov/
@@ -34,3 +37,4 @@ htmlcov/
 
 # LangGraph
 .langgraph/
+

@@ -2,8 +2,9 @@
 LangGraph StateGraph builder with conditional routing.
 """
 
+import os
 from langgraph.graph import StateGraph, END
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.sqlite import SqliteSaver
 from graph.state import ResearchState
 from graph.nodes.query_analyzer import query_analyzer_node
 from graph.nodes.web_search import web_search_node
@@ -100,11 +101,18 @@ def route_after_hitl(state: ResearchState) -> str:
         return "publisher"
 
 
-def _build_graph():
+# Path to the SQLite checkpoint database (persists across process restarts)
+_CHECKPOINT_DB = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "checkpoints",
+    "research_agent.db"
+)
+
+
+def _build_workflow() -> StateGraph:
     """
-    Build and compile the research agent StateGraph.
-    Called once at module load — the compiled app (with its MemorySaver)
-    is reused for every task so interrupt/resume state is preserved.
+    Build the StateGraph workflow (without compiling).
+    Separated so the caller can attach a checkpointer before compiling.
     """
     workflow = StateGraph(ResearchState)
 
@@ -159,17 +167,27 @@ def _build_graph():
     )
 
     workflow.add_edge("publisher", END)
-
-    # Compile with a single shared MemorySaver so checkpoints survive
-    # across the initial run → HITL pause → resume cycle.
-    memory = MemorySaver()
-    return workflow.compile(checkpointer=memory)
-
-
-# Module-level singleton — imported and reused by research_executor
-_app = _build_graph()
+    return workflow
 
 
 def build_graph():
-    """Return the singleton compiled graph."""
-    return _app
+    """
+    Return a compiled graph backed by a persistent SqliteSaver.
+
+    SqliteSaver keeps checkpoints in a local SQLite file so that state
+    survives across process restarts (e.g. main.py → resume_hitl.py).
+    The caller is responsible for using the graph within the context
+    manager that SqliteSaver provides, but for simplicity we open the
+    connection here and keep it open for the lifetime of the process.
+    """
+    import sqlite3
+    os.makedirs(os.path.dirname(_CHECKPOINT_DB), exist_ok=True)
+    
+    # Create a connection that persists for the lifetime of the module
+    # check_same_thread=False is needed because FastAPI/Uvicorn might run in threads
+    conn = sqlite3.connect(_CHECKPOINT_DB, check_same_thread=False)
+    
+    # Initialize SqliteSaver with the open connection
+    checkpointer = SqliteSaver(conn)
+    
+    return _build_workflow().compile(checkpointer=checkpointer)
