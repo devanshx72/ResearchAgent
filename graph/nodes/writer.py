@@ -2,8 +2,9 @@
 Article Writer Node - Generates full article from research notes.
 """
 
+import os
 from typing import Dict
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_mistralai import ChatMistralAI
 from graph.state import ResearchState
 from prompts.templates import ARTICLE_WRITER_PROMPT
 
@@ -36,10 +37,11 @@ IMPORTANT - HUMAN FEEDBACK TO INCORPORATE:
 Please carefully incorporate this feedback into your article.
 """
     
-    # Initialize Gemini Pro for creative writing
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-1.5-pro",
-        temperature=0.7
+    # Initialize Mistral for creative writing
+    llm = ChatMistralAI(
+        model="mistral-small-2503",
+        temperature=0.7,
+        api_key=os.getenv("MISTRAL_API_KEY")
     )
     
     # Generate article

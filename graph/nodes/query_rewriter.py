@@ -2,11 +2,13 @@
 Query Rewriter Node - Reformulates rejected queries.
 """
 
+import os
 import json
 from typing import Dict
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_mistralai import ChatMistralAI
 from graph.state import ResearchState
 from prompts.templates import QUERY_REWRITER_PROMPT
+from graph.nodes.utils import extract_json
 
 
 def query_rewriter_node(state: ResearchState) -> Dict:
@@ -32,10 +34,11 @@ def query_rewriter_node(state: ResearchState) -> Dict:
             "iteration_count": iteration_count
         }
     
-    # Initialize Gemini Flash for creative rephrasing
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash",
-        temperature=0.5
+    # Initialize Mistral for creative rephrasing
+    llm = ChatMistralAI(
+        model="mistral-small-2503",
+        temperature=0.5,
+        api_key=os.getenv("MISTRAL_API_KEY")
     )
     
     # Rewrite each rejected query
@@ -55,9 +58,9 @@ def query_rewriter_node(state: ResearchState) -> Dict:
         
         try:
             response = llm.invoke(prompt)
-            result = json.loads(response.content)
+            result = extract_json(response.content)
             rewritten = result.get("rewritten_query", rejected_query)
-        except (json.JSONDecodeError, Exception) as e:
+        except (ValueError, Exception) as e:
             print(f"Warning: Rewrite error: {e}, using original")
             rewritten = rejected_query
         

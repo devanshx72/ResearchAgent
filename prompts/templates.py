@@ -155,19 +155,20 @@ Return your response as JSON:
 """
 
 # HITL Display Template
-HITL_DISPLAY_TEMPLATE = """
-{'='*80}
+_SEP = "=" * 80
+HITL_DISPLAY_TEMPLATE = f"""
+{_SEP}
 ARTICLE DRAFT READY FOR REVIEW
-{'='*80}
+{_SEP}
 
-Quality Score: {quality_score}/100
+Quality Score: {{quality_score}}/100
 
-{article_draft}
+{{article_draft}}
 
-{'='*80}
+{_SEP}
 SOURCES
-{'='*80}
-{sources_list}
+{_SEP}
+{{sources_list}}
 
-{'='*80}
+{_SEP}
 """

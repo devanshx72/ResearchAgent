@@ -2,11 +2,13 @@
 Quality Checker Node - Evaluates article quality.
 """
 
+import os
 import json
 from typing import Dict
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_mistralai import ChatMistralAI
 from graph.state import ResearchState
 from prompts.templates import QUALITY_CHECKER_PROMPT
+from graph.nodes.utils import extract_json
 
 
 def quality_checker_node(state: ResearchState) -> Dict:
@@ -26,10 +28,11 @@ def quality_checker_node(state: ResearchState) -> Dict:
     sources = state.get("sources", [])
     write_iteration_count = state.get("write_iteration_count", 0)
     
-    # Initialize Gemini Flash for objective evaluation
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash",
-        temperature=0.1
+    # Initialize Mistral for objective evaluation
+    llm = ChatMistralAI(
+        model="mistral-small-2503",
+        temperature=0.1,
+        api_key=os.getenv("MISTRAL_API_KEY")
     )
     
     # Evaluate article
@@ -41,7 +44,7 @@ def quality_checker_node(state: ResearchState) -> Dict:
     
     try:
         response = llm.invoke(prompt)
-        evaluation = json.loads(response.content)
+        evaluation = extract_json(response.content)
         
         quality_score = evaluation.get("total_score", 0)
         feedback = evaluation.get("feedback", "")

@@ -100,16 +100,14 @@ def route_after_hitl(state: ResearchState) -> str:
         return "publisher"
 
 
-def build_graph() -> StateGraph:
+def _build_graph():
     """
-    Build the complete research agent StateGraph.
-    
-    Returns:
-        Compiled StateGraph with checkpointing
+    Build and compile the research agent StateGraph.
+    Called once at module load — the compiled app (with its MemorySaver)
+    is reused for every task so interrupt/resume state is preserved.
     """
-    # Create graph with state schema
     workflow = StateGraph(ResearchState)
-    
+
     # Add all nodes
     workflow.add_node("query_analyzer", query_analyzer_node)
     workflow.add_node("web_search", web_search_node)
@@ -120,18 +118,14 @@ def build_graph() -> StateGraph:
     workflow.add_node("quality_checker", quality_checker_node)
     workflow.add_node("hitl", hitl_checkpoint_node)
     workflow.add_node("publisher", publisher_node)
-    
-    # Set entry point
+
+    # Entry point
     workflow.set_entry_point("query_analyzer")
-    
-    # Add edges
-    # query_analyzer -> web_search
+
+    # Edges
     workflow.add_edge("query_analyzer", "web_search")
-    
-    # web_search -> result_grader
     workflow.add_edge("web_search", "result_grader")
-    
-    # result_grader -> [synthesizer OR query_rewriter]
+
     workflow.add_conditional_edges(
         "result_grader",
         route_after_grader,
@@ -140,17 +134,11 @@ def build_graph() -> StateGraph:
             "query_rewriter": "query_rewriter"
         }
     )
-    
-    # query_rewriter -> web_search (loop back)
+
     workflow.add_edge("query_rewriter", "web_search")
-    
-    # synthesizer -> writer
     workflow.add_edge("synthesizer", "writer")
-    
-    # writer -> quality_checker
     workflow.add_edge("writer", "quality_checker")
-    
-    # quality_checker -> [hitl OR writer]
+
     workflow.add_conditional_edges(
         "quality_checker",
         route_after_quality_checker,
@@ -159,8 +147,7 @@ def build_graph() -> StateGraph:
             "writer": "writer"
         }
     )
-    
-    # hitl -> [publisher OR writer OR query_analyzer]
+
     workflow.add_conditional_edges(
         "hitl",
         route_after_hitl,
@@ -170,12 +157,19 @@ def build_graph() -> StateGraph:
             "query_analyzer": "query_analyzer"
         }
     )
-    
-    # publisher -> END
+
     workflow.add_edge("publisher", END)
-    
-    # Compile with checkpointing for HITL
+
+    # Compile with a single shared MemorySaver so checkpoints survive
+    # across the initial run → HITL pause → resume cycle.
     memory = MemorySaver()
-    app = workflow.compile(checkpointer=memory)
-    
-    return app
+    return workflow.compile(checkpointer=memory)
+
+
+# Module-level singleton — imported and reused by research_executor
+_app = _build_graph()
+
+
+def build_graph():
+    """Return the singleton compiled graph."""
+    return _app

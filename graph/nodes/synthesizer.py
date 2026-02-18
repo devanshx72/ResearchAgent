@@ -2,8 +2,9 @@
 Research Synthesizer Node - Aggregates results into structured notes.
 """
 
+import os
 from typing import Dict
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_mistralai import ChatMistralAI
 from graph.state import ResearchState
 from prompts.templates import RESEARCH_SYNTHESIZER_PROMPT
 
@@ -37,10 +38,11 @@ def synthesizer_node(state: ResearchState) -> Dict:
     
     results_text = "\n---\n".join(formatted_results)
     
-    # Initialize Gemini Pro for synthesis
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-1.5-pro",
-        temperature=0.2
+    # Initialize Mistral for synthesis
+    llm = ChatMistralAI(
+        model="mistral-small-2503",
+        temperature=0.2,
+        api_key=os.getenv("MISTRAL_API_KEY")
     )
     
     # Generate research notes

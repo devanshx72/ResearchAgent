@@ -2,11 +2,13 @@
 Result Grader Node - Scores search results for relevance.
 """
 
+import os
 import json
 from typing import Dict, List
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_mistralai import ChatMistralAI
 from graph.state import ResearchState
 from prompts.templates import RESULT_GRADER_PROMPT
+from graph.nodes.utils import extract_json
 
 
 def result_grader_node(state: ResearchState) -> Dict:
@@ -23,10 +25,11 @@ def result_grader_node(state: ResearchState) -> Dict:
     
     search_results = state.get("search_results", [])
     
-    # Initialize Gemini Flash for consistent grading
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash",
-        temperature=0.1
+    # Initialize Mistral for consistent grading
+    llm = ChatMistralAI(
+        model="mistral-small-2503",
+        temperature=0.1,
+        api_key=os.getenv("MISTRAL_API_KEY")
     )
     
     graded_results = []
@@ -43,10 +46,10 @@ def result_grader_node(state: ResearchState) -> Dict:
         
         try:
             response = llm.invoke(prompt)
-            grade_data = json.loads(response.content)
+            grade_data = extract_json(response.content)
             score = grade_data.get("score", 3)
             reasoning = grade_data.get("reasoning", "")
-        except (json.JSONDecodeError, Exception) as e:
+        except (ValueError, Exception) as e:
             print(f"Warning: Grading error: {e}, defaulting to score 3")
             score = 3
             reasoning = "Default score due to grading error"

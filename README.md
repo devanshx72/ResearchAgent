@@ -1,6 +1,6 @@
 # Agentic Research & Article Generation System
 
-A multi-agent pipeline built with **LangGraph** and powered by **Google Gemini** that transforms a single user query into a fully researched, human-reviewed, publication-ready article.
+A multi-agent pipeline built with **LangGraph** and powered by **Mistral AI** that transforms a single user query into a fully researched, human-reviewed, publication-ready article.
 
 ## Features
 
@@ -28,7 +28,7 @@ User Query → Query Analyzer → Web Search → Result Grader
 ## Prerequisites
 
 - Python 3.11+
-- Google Gemini API key
+- Mistral AI API key
 - Tavily Search API key
 
 ## Quick Start
@@ -53,11 +53,37 @@ cp .env.template .env
 Edit `.env` and add your API keys:
 
 ```
-GEMINI_API_KEY=your_gemini_api_key_here
+MISTRAL_API_KEY=your_mistral_api_key_here
 TAVILY_API_KEY=your_tavily_api_key_here
 ```
 
-### 3. Run the Agent
+### 3. Run the Application
+
+**Option A: FastAPI Server (Recommended)**
+
+Start the server:
+```bash
+uvicorn app:app --reload --port 8000
+```
+
+Access the interactive API documentation:
+```
+http://localhost:8000/docs
+```
+
+Create a research task using the REST API (see [API_DOCUMENTATION.md](API_DOCUMENTATION.md) for details):
+```bash
+curl -X POST "http://localhost:8000/api/research" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Impact of AI on healthcare in 2025",
+    "export_format": "markdown",
+    "tone": "professional",
+    "word_count": 1500
+  }'
+```
+
+**Option B: CLI Mode**
 
 ```bash
 python main.py --query "Impact of AI on healthcare in 2025" --export-format markdown
@@ -102,10 +128,19 @@ python resume_hitl.py \
 
 ```
 .
-├── main.py                     # Entry point
-├── resume_hitl.py              # HITL resume script
+├── app.py                      # FastAPI application
+├── main.py                     # CLI entry point
+├── resume_hitl.py              # CLI HITL resume script
 ├── requirements.txt            # Dependencies
 ├── .env                        # API keys (create from .env.template)
+├── API_DOCUMENTATION.md        # FastAPI usage guide
+├── api/
+│   ├── endpoints.py            # REST API endpoints
+│   ├── websocket.py            # WebSocket endpoint
+│   ├── task_manager.py         # Task state manager
+│   └── research_executor.py    # Graph executor
+├── models/
+│   └── schemas.py              # Pydantic models
 ├── graph/
 │   ├── state.py                # ResearchState definition
 │   ├── graph_builder.py        # LangGraph orchestration
@@ -140,13 +175,13 @@ python resume_hitl.py \
 
 | Agent | Role | Model |
 |-------|------|-------|
-| **Query Analyzer** | Breaks query into 3-5 sub-questions | Gemini 1.5 Flash |
+| **Query Analyzer** | Breaks query into 3-5 sub-questions | mistral-large-latest |
 | **Web Search** | Searches Tavily API for each sub-question | N/A (API) |
-| **Result Grader** | Scores results 1-5 on relevance | Gemini 1.5 Flash |
-| **Query Rewriter** | Reformulates poor queries (max 3 iterations) | Gemini 1.5 Flash |
-| **Synthesizer** | Aggregates results into structured notes | Gemini 1.5 Pro |
-| **Article Writer** | Generates full article from notes | Gemini 1.5 Pro |
-| **Quality Checker** | Scores article 0-100 on 4 dimensions | Gemini 1.5 Flash |
+| **Result Grader** | Scores results 1-5 on relevance | mistral-large-latest |
+| **Query Rewriter** | Reformulates poor queries (max 3 iterations) | mistral-large-latest |
+| **Synthesizer** | Aggregates results into structured notes | mistral-large-latest |
+| **Article Writer** | Generates full article from notes | mistral-large-latest |
+| **Quality Checker** | Scores article 0-100 on 4 dimensions | mistral-large-latest |
 | **HITL Checkpoint** | Pauses for human review | N/A (interrupt) |
 | **Publisher** | Exports to .md/.docx/Notion | N/A (I/O) |
 
@@ -205,7 +240,7 @@ MIT License - See LICENSE file for details
 
 Built with:
 - [LangGraph](https://github.com/langchain-ai/langgraph) - Agent orchestration framework
-- [Google Gemini](https://ai.google.dev/) - LLM provider
+- [Mistral AI](https://mistral.ai/) - LLM provider
 - [Tavily](https://tavily.com/) - Agent-optimized search API
 
 ---

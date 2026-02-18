@@ -2,11 +2,13 @@
 Query Analyzer Node - Breaks user query into sub-questions.
 """
 
+import os
 import json
 from typing import Dict
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_mistralai import ChatMistralAI
 from graph.state import ResearchState
 from prompts.templates import QUERY_ANALYZER_PROMPT
+from graph.nodes.utils import extract_json
 
 
 def query_analyzer_node(state: ResearchState) -> Dict:
@@ -23,10 +25,11 @@ def query_analyzer_node(state: ResearchState) -> Dict:
     
     query = state.get("query", "")
     
-    # Initialize Gemini Flash for structured decomposition
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash",
-        temperature=0.2
+    # Initialize Mistral for structured decomposition
+    llm = ChatMistralAI(
+        model="mistral-small-2503",
+        temperature=0.2,
+        api_key=os.getenv("MISTRAL_API_KEY")
     )
     
     # Generate sub-questions
@@ -35,9 +38,9 @@ def query_analyzer_node(state: ResearchState) -> Dict:
     
     # Parse JSON response
     try:
-        result = json.loads(response.content)
+        result = extract_json(response.content)
         sub_questions = result.get("sub_questions", [])
-    except json.JSONDecodeError:
+    except (ValueError, Exception):
         # Fallback: extract questions from text
         print("Warning: JSON parsing failed, using fallback extraction")
         sub_questions = [q.strip() for q in response.content.split("\n") if q.strip() and "?" in q][:5]
